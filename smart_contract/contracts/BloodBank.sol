@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.17;
+pragma solidity ^0.8.7;
 
 contract BloodBank {
-    // set the i_owner of the contract
-    address i_owner;
+    error BloodBank_NotOwner();
+
+    // set the owner of the contract
+    address immutable i_owner;
 
     constructor() {
         i_owner = msg.sender;
@@ -37,11 +39,11 @@ contract BloodBank {
 
     // Array to store all the patientRecord
     // Array is used so that all the patientRecord can be fetched at once
-    Patient[] PatientRecord;
+    Patient[] private PatientRecord;
 
     // map is used to map the addhar card with the index number of the array where patient record is stored
     // this will prevent the use of loop in contract
-    mapping(uint256 => uint256) PatientRecordIndex;
+    mapping(uint256 => uint256) private PatientRecordIndex;
 
     // used for notifying if function is executed or not
     event Successfull(string message);
@@ -57,7 +59,9 @@ contract BloodBank {
     ) external {
         // Since patient can be only registered by the hospital hence its required to check if the sender
         // is i_owner or not
-        require(msg.sender == i_owner, "only admin can register new patient");
+        if (msg.sender == i_owner) {
+            revert BloodBank_NotOwner();
+        }
 
         // get the legth of array
         uint256 index = PatientRecord.length;
@@ -77,21 +81,6 @@ contract BloodBank {
         emit Successfull("Patient added successfully");
     }
 
-    // function to get specific user data
-    function getPatientRecord(uint256 _aadhar)
-        external
-        view
-        returns (Patient memory)
-    {
-        uint256 index = PatientRecordIndex[_aadhar];
-        return PatientRecord[index];
-    }
-
-    // function to get all the records
-    function getAllRecord() external view returns (Patient[] memory) {
-        return PatientRecord;
-    }
-
     // store the blood txn
     function bloodTransaction(
         uint256 _aadhar,
@@ -100,10 +89,9 @@ contract BloodBank {
         address _to
     ) external {
         // check if sender is hospital or not
-        require(
-            msg.sender == i_owner,
-            "only hospital can update the patient's blood transaction data"
-        );
+        if (msg.sender == i_owner) {
+            revert BloodBank_NotOwner();
+        }
 
         // get at which index the patient registartion details are saved
         uint256 index = PatientRecordIndex[_aadhar];
@@ -124,5 +112,25 @@ contract BloodBank {
         emit Successfull(
             "Patient blood transaction data is updated successfully"
         );
+    }
+
+    // get Functions
+    function getOwner() public view returns (address) {
+        return i_owner;
+    }
+
+    // function to get specific user data
+    function getPatientRecord(uint256 _aadhar)
+        external
+        view
+        returns (Patient memory)
+    {
+        uint256 index = PatientRecordIndex[_aadhar];
+        return PatientRecord[index];
+    }
+
+    // function to get all the records
+    function getAllRecord() external view returns (Patient[] memory) {
+        return PatientRecord;
     }
 }
